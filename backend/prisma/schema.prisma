@@ -1,0 +1,514 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model audit_logs {
+  id          BigInt               @id @default(autoincrement()) @db.UnsignedBigInt
+  company_id  BigInt               @db.UnsignedBigInt
+  user_id     BigInt               @db.UnsignedBigInt
+  entity_name String               @db.VarChar(100)
+  entity_id   BigInt               @db.UnsignedBigInt
+  operation   audit_logs_operation
+  old_data    Json?
+  new_data    Json?
+  ip_address  String?              @db.VarChar(50)
+  user_agent  String?              @db.VarChar(500)
+  session_id  String?              @db.VarChar(255)
+  created_at  DateTime             @default(now()) @db.DateTime(0)
+  companies   companies            @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_audit_company")
+  users       users                @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_audit_user")
+
+  @@index([company_id], map: "idx_audit_company")
+  @@index([company_id, created_at], map: "idx_audit_company_date")
+  @@index([company_id, entity_name], map: "idx_audit_company_entity")
+  @@index([created_at], map: "idx_audit_date")
+  @@index([entity_name, entity_id], map: "idx_audit_entity")
+  @@index([operation], map: "idx_audit_operation")
+  @@index([user_id], map: "idx_audit_user")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model bank_accounts {
+  id              BigInt           @id @default(autoincrement()) @db.UnsignedBigInt
+  company_id      BigInt           @db.UnsignedBigInt
+  bank_name       String           @db.VarChar(100)
+  agency          String?          @db.VarChar(20)
+  account_number  String?          @db.VarChar(30)
+  current_balance Decimal?         @default(0.00) @db.Decimal(18, 2)
+  active          Boolean?         @default(true)
+  created_at      DateTime?        @default(now()) @db.DateTime(0)
+  companies       companies        @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_bank_account_company")
+  cash_movements  cash_movements[]
+
+  @@index([company_id], map: "idx_bank_company")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model cash_movements {
+  id               BigInt              @id @default(autoincrement()) @db.UnsignedBigInt
+  company_id       BigInt              @db.UnsignedBigInt
+  bank_account_id  BigInt?             @db.UnsignedBigInt
+  movement_date    DateTime            @db.Date
+  type             cash_movements_type
+  amount           Decimal             @db.Decimal(18, 2)
+  description      String?             @db.VarChar(255)
+  journal_entry_id BigInt?             @db.UnsignedBigInt
+  created_at       DateTime            @default(now()) @db.DateTime(0)
+  updated_at       DateTime            @default(now()) @db.DateTime(0)
+  bank_accounts    bank_accounts?      @relation(fields: [bank_account_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_cash_bank")
+  companies        companies           @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_cash_company")
+  journal_entries  journal_entries?    @relation(fields: [journal_entry_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_cash_journal")
+
+  @@index([bank_account_id], map: "idx_cash_bank_account")
+  @@index([company_id], map: "idx_cash_company")
+  @@index([company_id, movement_date], map: "idx_cash_company_date")
+  @@index([company_id, type], map: "idx_cash_company_type")
+  @@index([movement_date], map: "idx_cash_date")
+  @@index([journal_entry_id], map: "idx_cash_journal")
+  @@index([type], map: "idx_cash_type")
+}
+
+/// chart_plans
+///     ↓
+/// chart_account_templates
+///     ↓
+/// chart_accounts
+///     ↓
+/// lançamentos contábeis
+///
+///
+/// Assim você poderá ter vários planos:
+///
+/// Plano Padrão ERP
+/// Plano IFRS
+/// Plano Simples Nacional
+/// Plano Terceiro Setor
+/// Plano Condomínios
+/// Plano Cooperativas
+///
+///
+/// e cada empresa escolhe qual deseja utilizar.
+/// Exemplos:
+///
+/// STANDARD
+/// IFRS
+/// SIMPLES
+/// CONDOMINIO
+///
+/// Plano de Contas (Catálogo)
+model chart_plans {
+  id            BigInt                    @id @default(autoincrement()) @db.UnsignedBigInt
+  code          String                    @unique(map: "uk_chart_plan_code") @db.VarChar(50)
+  name          String                    @db.VarChar(255)
+  description   String?                   @db.VarChar(1000)
+  active        Boolean                   @default(true)
+  created_at    DateTime?                 @default(now()) @db.DateTime(0)
+  templates     chart_account_templates[]
+  companies     companies[]
+
+  @@index([active], map: "idx_chart_plan_active")
+}
+
+/// Templates do Plano
+///
+/// Substitui o atual chart_accounts global.
+model chart_account_templates {
+  id              BigInt                    @id @default(autoincrement()) @db.UnsignedBigInt
+  chart_plan_id   BigInt                    @db.UnsignedBigInt
+  code            String                    @db.VarChar(30)
+  name            String                    @db.VarChar(255)
+  category        chart_accounts_category
+  parent_id       BigInt?                   @db.UnsignedBigInt
+  analytical      Boolean                   @default(true)
+  active          Boolean                   @default(true)
+  created_at      DateTime?                 @default(now()) @db.DateTime(0)
+  chart_plans     chart_plans               @relation(fields: [chart_plan_id], references: [id], map: "fk_template_plan")
+  parent          chart_account_templates?  @relation("template_tree", fields: [parent_id], references: [id], map: "fk_template_parent")
+  children        chart_account_templates[] @relation("template_tree")
+  chart_accounts  chart_accounts[]
+
+  @@unique([chart_plan_id, code], map: "uk_template_plan_code")
+  @@index([chart_plan_id], map: "idx_template_plan")
+  @@index([parent_id], map: "idx_template_parent")
+  @@index([category], map: "idx_template_category")
+}
+
+
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// Esta é a tabela utilizada pela contabilidade.
+/// Todos os lançamentos apontam APENAS para ela.
+
+model chart_accounts {
+  id                   BigInt                   @id @default(autoincrement()) @db.UnsignedBigInt
+  company_id           BigInt                   @db.UnsignedBigInt
+  template_id          BigInt?                  @db.UnsignedBigInt
+  code                 String                   @unique(map: "uk_chart_accounts_code") @db.VarChar(30)
+  name                 String                   @db.VarChar(255)
+  category             chart_accounts_category
+  parent_id            BigInt?                  @db.UnsignedBigInt
+  analytical           Boolean                  @default(true)
+  active               Boolean                  @default(true)
+  created_at           DateTime?                @default(now()) @db.DateTime(0)
+  companies            companies                @relation(fields: [company_id], references: [id], map: "fk_chart_account_company")
+  template             chart_account_templates? @relation(fields: [template_id], references: [id],map: "fk_chart_account_template")
+  parent               chart_accounts?          @relation("chart_account_tree", fields: [parent_id], references: [id], map: "fk_chart_account_parent")
+  children             chart_accounts[]         @relation("chart_account_tree")
+  company_accounts     company_accounts[]
+  journal_entry_items  journal_entry_items[]
+  ledger_movements     ledger_movements[]
+
+  @@unique([company_id, code], map: "uk_company_chart_account_code")
+  @@index([company_id])
+  @@index([template_id])
+  @@index([parent_id])
+  @@index([category])
+}
+
+/// Customizações da Empresa
+///
+/// Agora esta tabela passa a guardar preferências específicas.
+model company_accounts {
+  id                BigInt         @id @default(autoincrement()) @db.UnsignedBigInt
+  company_id        BigInt         @db.UnsignedBigInt
+  chart_account_id  BigInt         @db.UnsignedBigInt
+  favorite          Boolean        @default(false)
+  notes             String?        @db.VarChar(1000)
+  created_at        DateTime?      @default(now()) @db.DateTime(0)
+  companies         companies      @relation(fields: [company_id], references: [id])
+  chart_accounts    chart_accounts @relation(fields: [chart_account_id], references: [id])
+
+  @@unique([company_id, chart_account_id], map: "uk_company_account")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model companies {
+  id                BigInt              @id @default(autoincrement()) @db.UnsignedBigInt
+  uuid              String              @unique(map: "uk_companies_uuid") @db.Char(36)
+  legal_name        String              @db.VarChar(255)
+  trade_name        String?             @db.VarChar(255)
+  tax_id            String              @unique(map: "uk_companies_tax_id") @db.VarChar(20)
+  email             String?             @db.VarChar(255)
+  phone             String?             @db.VarChar(30)
+  active            Boolean             @default(true)
+  chart_plan_id     BigInt?             @db.UnsignedBigInt
+  created_at        DateTime            @default(now()) @db.DateTime(0)
+  updated_at        DateTime?           @db.DateTime(0)
+  audit_logs        audit_logs[]
+  bank_accounts     bank_accounts[]
+  cash_movements    cash_movements[]
+  company_accounts  company_accounts[]
+  customers         customers[]
+  journal_entries   journal_entries[]
+  journal_reversals journal_reversals[]
+  ledger_movements  ledger_movements[]
+  payables          payables[]
+  receivables       receivables[]
+  suppliers         suppliers[]
+  chart_accounts    chart_accounts[]
+  chart_plans       chart_plans?       @relation(fields: [chart_plan_id], references: [id], map: "fk_company_chart_plan")
+
+  @@index([chart_plan_id])
+  @@index([active], map: "idx_companies_active")
+}
+
+model customers {
+  id              BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
+  company_id      BigInt        @db.UnsignedBigInt
+  name            String        @db.VarChar(255)
+  document_number String?       @db.VarChar(20)
+  email           String?       @db.VarChar(255)
+  phone           String?       @db.VarChar(30)
+  created_at      DateTime?     @default(now()) @db.DateTime(0)
+  companies       companies     @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_customers_company")
+  receivables     receivables[]
+
+  @@index([company_id], map: "idx_customer_company")
+  @@index([document_number], map: "idx_customer_doc")
+
+  @@unique([company_id, document_number], map: "uk_customer_company_document")
+}
+
+model journal_entries {
+  id                                                                          BigInt                         @id @default(autoincrement()) @db.UnsignedBigInt
+  company_id                                                                  BigInt                         @db.UnsignedBigInt
+  entry_number                                                                String                         @db.VarChar(50)
+  entry_date                                                                  DateTime                       @db.Date
+  description                                                                 String?                        @db.VarChar(500)
+  total_debit                                                                 Decimal                        @db.Decimal(18, 2)
+  total_credit                                                                Decimal                        @db.Decimal(18, 2)
+  source_module                                                               journal_entries_source_module? @default(MANUAL)
+  status                                                                      journal_entries_status
+  reversal_of_entry_id                                                        BigInt?                        @db.UnsignedBigInt
+  reversed_by_entry_id                                                        BigInt?                        @db.UnsignedBigInt
+  created_by                                                                  BigInt                         @db.UnsignedBigInt
+  created_at                                                                  DateTime?                      @default(now()) @db.DateTime(0)
+  cash_movements                                                              cash_movements[]
+  companies                                                                   companies                      @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_journal_company")
+  journal_entries_journal_entries_reversed_by_entry_idTojournal_entries       journal_entries?               @relation("journal_entries_reversed_by_entry_idTojournal_entries", fields: [reversed_by_entry_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_journal_reversal_generated")
+  other_journal_entries_journal_entries_reversed_by_entry_idTojournal_entries journal_entries[]              @relation("journal_entries_reversed_by_entry_idTojournal_entries")
+  journal_entries_journal_entries_reversal_of_entry_idTojournal_entries       journal_entries?               @relation("journal_entries_reversal_of_entry_idTojournal_entries", fields: [reversal_of_entry_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_journal_reversal_origin")
+  other_journal_entries_journal_entries_reversal_of_entry_idTojournal_entries journal_entries[]              @relation("journal_entries_reversal_of_entry_idTojournal_entries")
+  users                                                                       users                          @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_journal_user")
+  journal_entry_items                                                         journal_entry_items[]
+  journal_reversals_journal_reversals_reversal_entry_idTojournal_entries      journal_reversals?             @relation("journal_reversals_reversal_entry_idTojournal_entries")
+  journal_reversals_journal_reversals_original_entry_idTojournal_entries      journal_reversals?             @relation("journal_reversals_original_entry_idTojournal_entries")
+  payable_payments                                                            payable_payments[]
+
+  @@unique([company_id, entry_number], map: "uk_company_entry_number")
+  @@index([reversed_by_entry_id], map: "fk_journal_reversal_generated")
+  @@index([reversal_of_entry_id], map: "fk_journal_reversal_origin")
+  @@index([created_by], map: "fk_journal_user")
+  @@index([company_id], map: "idx_journal_company")
+  @@index([entry_date], map: "idx_journal_date")
+  @@index([status], map: "idx_journal_status")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model journal_entry_items {
+  id               BigInt                   @id @default(autoincrement()) @db.UnsignedBigInt
+  entry_id         BigInt                   @db.UnsignedBigInt
+  account_id       BigInt                   @db.UnsignedBigInt
+  type             journal_entry_items_type
+  amount           Decimal                  @db.Decimal(18, 2)
+  description      String?                  @db.VarChar(500)
+  created_at       DateTime?                @default(now()) @db.DateTime(0)
+  chart_accounts   chart_accounts           @relation(fields: [account_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_item_account")
+  journal_entries  journal_entries          @relation(fields: [entry_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_item_entry")
+  ledger_movements ledger_movements[]
+
+  @@index([account_id], map: "idx_item_account")
+  @@index([entry_id], map: "idx_item_entry")
+  @@index([type], map: "idx_item_type")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model journal_reversals {
+  id                                                                   BigInt          @id @default(autoincrement()) @db.UnsignedBigInt
+  company_id                                                           BigInt          @db.UnsignedBigInt
+  original_entry_id                                                    BigInt          @unique(map: "uk_reversal_original") @db.UnsignedBigInt
+  reversal_entry_id                                                    BigInt          @unique(map: "uk_reversal_generated") @db.UnsignedBigInt
+  reason                                                               String          @db.VarChar(500)
+  reversed_by_user_id                                                  BigInt          @db.UnsignedBigInt
+  reversed_at                                                          DateTime        @default(now()) @db.DateTime(0)
+  created_at                                                           DateTime        @default(now()) @db.DateTime(0)
+  companies                                                            companies       @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_reverse_company")
+  journal_entries_journal_reversals_reversal_entry_idTojournal_entries journal_entries @relation("journal_reversals_reversal_entry_idTojournal_entries", fields: [reversal_entry_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_reverse_generated")
+  journal_entries_journal_reversals_original_entry_idTojournal_entries journal_entries @relation("journal_reversals_original_entry_idTojournal_entries", fields: [original_entry_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_reverse_original")
+  users                                                                users           @relation(fields: [reversed_by_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_reverse_user")
+
+  @@index([company_id], map: "idx_reverse_company")
+  @@index([company_id, reversed_at], map: "idx_reverse_company_date")
+  @@index([reversed_at], map: "idx_reverse_date")
+  @@index([reversed_by_user_id], map: "idx_reverse_user")
+}
+
+model ledger_movements {
+  id                  BigInt              @id @default(autoincrement()) @db.UnsignedBigInt
+  company_id          BigInt              @db.UnsignedBigInt
+  account_id          BigInt              @db.UnsignedBigInt
+  journal_item_id     BigInt              @db.UnsignedBigInt
+  movement_date       DateTime            @db.Date
+  debit               Decimal?            @default(0.00) @db.Decimal(18, 2)
+  credit              Decimal?            @default(0.00) @db.Decimal(18, 2)
+  running_balance     Decimal             @db.Decimal(18, 2)
+  created_at          DateTime?           @default(now()) @db.DateTime(0)
+  chart_accounts      chart_accounts      @relation(fields: [account_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_ledger_account")
+  companies           companies           @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_ledger_company")
+  journal_entry_items journal_entry_items @relation(fields: [journal_item_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_ledger_item")
+
+  @@index([journal_item_id], map: "fk_ledger_item")
+  @@index([account_id], map: "idx_ledger_account")
+  @@index([account_id, movement_date], map: "idx_ledger_account_date")
+  @@index([company_id], map: "idx_ledger_company")
+  @@index([movement_date], map: "idx_ledger_date")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model payables {
+  id          BigInt          @id @default(autoincrement()) @db.UnsignedBigInt
+  company_id  BigInt          @db.UnsignedBigInt
+  supplier_id BigInt?         @db.UnsignedBigInt
+  issue_date  DateTime        @db.Date
+  due_date    DateTime        @db.Date
+  amount      Decimal         @db.Decimal(18, 2)
+  paid_amount Decimal         @default(0.00) @db.Decimal(18, 2)
+  description String?         @db.VarChar(255)
+  status      payables_status @default(OPEN)
+  created_at  DateTime        @default(now()) @db.DateTime(0)
+  updated_at  DateTime        @default(now()) @db.DateTime(0)
+  companies   companies       @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_payable_company")
+  suppliers   suppliers?      @relation(fields: [supplier_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_payable_supplier")
+  payments    payable_payments[]
+
+  @@index([company_id], map: "idx_payable_company")
+  @@index([company_id, status], map: "idx_payable_company_status")
+  @@index([due_date], map: "idx_payable_due_date")
+  @@index([status], map: "idx_payable_status")
+  @@index([supplier_id], map: "idx_payable_supplier")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model receivables {
+  id              BigInt             @id @default(autoincrement()) @db.UnsignedBigInt
+  company_id      BigInt             @db.UnsignedBigInt
+  customer_id     BigInt?            @db.UnsignedBigInt
+  issue_date      DateTime           @db.Date
+  due_date        DateTime           @db.Date
+  amount          Decimal            @db.Decimal(18, 2)
+  received_amount Decimal            @default(0.00) @db.Decimal(18, 2)
+  description     String?            @db.VarChar(255)
+  status          receivables_status @default(OPEN)
+  created_at      DateTime           @default(now()) @db.DateTime(0)
+  updated_at      DateTime           @default(now()) @db.DateTime(0)
+  companies       companies          @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_receivable_company")
+  customers       customers?         @relation(fields: [customer_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_receivable_customer")
+
+  @@index([company_id], map: "idx_receivable_company")
+  @@index([company_id, status], map: "idx_receivable_company_status")
+  @@index([customer_id], map: "idx_receivable_customer")
+  @@index([due_date], map: "idx_receivable_due_date")
+  @@index([status], map: "idx_receivable_status")
+}
+
+model suppliers {
+  id              BigInt     @id @default(autoincrement()) @db.UnsignedBigInt
+  company_id      BigInt     @db.UnsignedBigInt
+  name            String     @db.VarChar(255)
+  document_number String?    @db.VarChar(20)
+  email           String     @db.VarChar(255)
+  phone           String?    @db.VarChar(30)
+  created_at      DateTime?  @default(now()) @db.DateTime(0)
+  payables        payables[]
+  companies       companies  @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_suppliers_company")
+
+  @@index([company_id], map: "idx_supplier_company")
+  @@unique([company_id, document_number], map: "uk_supplier_company_doc")
+}
+
+model users {
+  id                BigInt              @id @default(autoincrement()) @db.UnsignedBigInt
+  company_id        BigInt              @db.UnsignedBigInt
+  name              String              @db.VarChar(255)
+  email             String              @db.VarChar(255)
+  active            Boolean             @default(true)
+  password_hash     String              @db.VarChar(255)
+  role              UserRole            @default(EMPLOYEE)
+  status            UserStatus          @default(ACTIVE)
+  created_at        DateTime?           @default(now()) @db.DateTime(0)
+  audit_logs        audit_logs[]
+  journal_entries   journal_entries[]
+  journal_reversals journal_reversals[]
+
+  @@unique([company_id, id], map: "uk_user_company")
+}
+
+enum payable_payment_method {
+  CASH
+  PIX
+  TED
+  DOC
+  BANK_TRANSFER
+  CHECK
+  CREDIT_CARD
+  DEBIT_CARD
+  OTHER
+}
+
+model payable_payments {
+  id                  BigInt                   @id @default(autoincrement()) @db.UnsignedBigInt
+  payable_id          BigInt                   @db.UnsignedBigInt
+  payment_date        DateTime                 @db.Date
+  amount              Decimal                  @db.Decimal(18, 2)
+  payment_method      payable_payment_method?
+  document_number     String?                  @db.VarChar(100)
+  notes               String?                  @db.VarChar(1000)
+  journal_entry_id    BigInt?                  @db.UnsignedBigInt
+  created_at          DateTime                 @default(now()) @db.DateTime(0)
+
+  payables            payables                 @relation(fields: [payable_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_payment_payable")
+  journal_entries     journal_entries?         @relation(fields: [journal_entry_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_payment_journal")
+
+  @@index([payable_id], map: "idx_payment_payable")
+  @@index([payment_date], map: "idx_payment_date")
+  @@index([journal_entry_id], map: "idx_payment_journal")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  COMPANY_ADMIN
+  ACCOUNTANT
+  MANAGER
+  EMPLOYEE
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum chart_accounts_category {
+  ATIVO
+  PASSIVO
+  PATRIMONIO
+  RECEITA
+  DESPESA
+}
+
+enum journal_entry_items_type {
+  DEBIT
+  CREDIT
+}
+
+enum cash_movements_type {
+  INCOME
+  EXPENSE
+}
+
+enum audit_logs_operation {
+  INSERT
+  UPDATE
+  DELETE
+  POST
+  REVERSE
+  LOGIN
+  LOGOUT
+  APPROVE
+  REJECT
+  CANCEL
+}
+
+enum journal_entries_source_module {
+  MANUAL
+  PAYABLE
+  RECEIVABLE
+  BANK
+  PIX
+  INVOICE
+}
+
+enum journal_entries_status {
+  DRAFT
+  POSTED
+  REVERSED
+}
+
+enum payables_status {
+  OPEN
+  PARTIAL
+  PAID
+  CANCELLED
+}
+
+enum receivables_status {
+  OPEN
+  PARTIAL
+  PAID
+  CANCELLED
+}

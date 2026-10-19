@@ -56,7 +56,7 @@ describe('JournalReversalsService', () => {
       prismaMock.journal_entries.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.reverse(BigInt(1), BigInt(1), BigInt(1), 'Teste'),
+        service.reverse(BigInt(1), BigInt(1), 'Teste'),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -68,7 +68,7 @@ describe('JournalReversalsService', () => {
       });
 
       await expect(
-        service.reverse(BigInt(1), BigInt(1), BigInt(1), 'Teste'),
+        service.reverse(BigInt(1), BigInt(1), 'Teste'),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -84,7 +84,7 @@ describe('JournalReversalsService', () => {
       });
 
       await expect(
-        service.reverse(BigInt(1), BigInt(1), BigInt(1), 'Teste'),
+        service.reverse(BigInt(1), BigInt(1), 'Teste'),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -150,7 +150,6 @@ describe('JournalReversalsService', () => {
       );
 
       const result = await service.reverse(
-        BigInt(1),
         BigInt(1),
         BigInt(1),
         'Lançamento incorreto',
@@ -224,7 +223,7 @@ describe('JournalReversalsService', () => {
         callback(tx),
       );
 
-      await service.reverse(BigInt(1), BigInt(1), BigInt(1), 'Teste');
+      await service.reverse(BigInt(1), BigInt(1), 'Teste');
 
       expect(itemCreateMock).toHaveBeenCalledWith({
         data: expect.objectContaining({

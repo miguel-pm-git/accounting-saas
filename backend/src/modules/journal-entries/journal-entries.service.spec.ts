@@ -98,7 +98,7 @@ describe('JournalEntriesService', () => {
         ],
       };
 
-      const result = await service.create(dto as any, BigInt(1), BigInt(1));
+      const result = await service.create(dto as any, BigInt(1));
 
       expect(result.id).toBe(BigInt(1));
 
@@ -125,7 +125,7 @@ describe('JournalEntriesService', () => {
       };
 
       await expect(
-        service.create(dto as any, BigInt(1), BigInt(1)),
+        service.create(dto as any, BigInt(1)),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -147,7 +147,7 @@ describe('JournalEntriesService', () => {
       };
 
       await expect(
-        service.create(dto as any, BigInt(1), BigInt(1)),
+        service.create(dto as any, BigInt(1)),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -169,7 +169,7 @@ describe('JournalEntriesService', () => {
         callback(tx),
       );
 
-      const result = await service.post(BigInt(1), BigInt(1));
+      const result = await service.post(BigInt(1));
 
       expect(ledgerMovementsServiceMock.generateMovement).toHaveBeenCalledTimes(
         2,
@@ -194,7 +194,7 @@ describe('JournalEntriesService', () => {
         journal_entry_items: [],
       });
 
-      await expect(service.post(BigInt(1), BigInt(1))).rejects.toThrow(
+      await expect(service.post(BigInt(1))).rejects.toThrow(
         BadRequestException,
       );
     });
@@ -202,7 +202,7 @@ describe('JournalEntriesService', () => {
     it('deve lançar erro quando lançamento não existir', async () => {
       prismaMock.journal_entries.findFirst.mockResolvedValue(null);
 
-      await expect(service.post(BigInt(999), BigInt(1))).rejects.toThrow(
+      await expect(service.post(BigInt(999))).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -214,11 +214,11 @@ describe('JournalEntriesService', () => {
         journal_entry_items: [],
       });
 
-      await expect(service.post(BigInt(1), BigInt(1))).rejects.toThrow(
+      await expect(service.post(BigInt(1))).rejects.toThrow(
         BadRequestException,
       );
     });
-    
+
   });
 
   describe('update', () => {
@@ -229,7 +229,7 @@ describe('JournalEntriesService', () => {
       } as any);
 
       await expect(
-        service.update(BigInt(1), BigInt(1), {
+        service.update(BigInt(1), {
           description: 'Novo texto',
         }),
       ).rejects.toThrow(BadRequestException);
@@ -243,7 +243,7 @@ describe('JournalEntriesService', () => {
         status: journal_entries_status.POSTED,
       } as any);
 
-      await expect(service.remove(BigInt(1), BigInt(1))).rejects.toThrow(
+      await expect(service.remove(BigInt(1))).rejects.toThrow(
         BadRequestException,
       );
     });
@@ -253,7 +253,7 @@ describe('JournalEntriesService', () => {
     it('deve listar lançamentos', async () => {
       prismaMock.journal_entries.findMany.mockResolvedValue([]);
 
-      const result = await service.findAll(BigInt(1));
+      const result = await service.findAll();
 
       expect(result).toEqual([]);
     });

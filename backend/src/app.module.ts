@@ -24,6 +24,12 @@ import { TenantModule } from './common/tenant/tenant.module.js';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { TenantInterceptor } from './common/interceptors/tenant.interceptor.js';
 import jwtConfig from './config/jwt.config.js';
+import { PlansModule } from './modules/plans/plans.module.js';
+import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module.js';
+import { InvoicesModule } from './modules/invoices/invoices.module.js';
+import { PaymentsModule } from './modules/payments/payments.module.js';
+import { ScheduleModule } from '@nestjs/schedule';
+import { BillingModule } from './modules/billing/billing.module.js';
 
 @Module({
   imports: [
@@ -50,6 +56,12 @@ import jwtConfig from './config/jwt.config.js';
     LedgerMovementsModule,
     JournalReversalsModule,
     TenantModule,
+    PlansModule,
+    SubscriptionsModule,
+    InvoicesModule,
+    PaymentsModule,
+    ScheduleModule.forRoot(),
+    BillingModule,
   ],
   controllers: [AppController],
   providers: [

@@ -65,7 +65,7 @@ describe('JournalEntriesController', () => {
 
     serviceMock.findAll.mockResolvedValue([]);
 
-    await controller.findAll(req);
+    await controller.findAll();
 
     expect(serviceMock.findAll).toHaveBeenCalledWith(BigInt(10));
   });
@@ -81,7 +81,7 @@ describe('JournalEntriesController', () => {
       id: BigInt(1),
     });
 
-    await controller.findOne('1', req);
+    await controller.findOne('1');
 
     expect(serviceMock.findOne).toHaveBeenCalledWith(BigInt(1), BigInt(10));
   });
@@ -101,7 +101,7 @@ describe('JournalEntriesController', () => {
       id: BigInt(1),
     });
 
-    await controller.update('1', dto as any, req);
+    await controller.update('1', dto as any);
 
     expect(serviceMock.update).toHaveBeenCalledWith(BigInt(1), BigInt(10), dto);
   });
@@ -117,7 +117,7 @@ describe('JournalEntriesController', () => {
       id: BigInt(1),
     });
 
-    await controller.remove('1', req);
+    await controller.remove('1');
 
     expect(serviceMock.remove).toHaveBeenCalledWith(BigInt(1), BigInt(10));
   });

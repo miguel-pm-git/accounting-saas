@@ -11,6 +11,7 @@ import { UpdateChartPlanDto } from './dto/update-chart-plan.dto.js';
 
 import { serializeBigInt } from '../../common/utils/bigint.util.js';
 
+
 @Injectable()
 export class ChartPlansService {
   constructor(private readonly prisma: PrismaService) {}

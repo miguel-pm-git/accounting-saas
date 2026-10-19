@@ -19,9 +19,8 @@ export class LedgerMovementsController {
   ) {}
 
   @Get()
-  findAll(@Request() req: AuthRequest, @Query() filter: LedgerFilterDto) {
+  findAll(@Query() filter: LedgerFilterDto) {
     return this.ledgerMovementsService.findAll(
-      BigInt(req.user.companyId),
       filter,
     );
   }
@@ -32,7 +31,6 @@ export class LedgerMovementsController {
     @Param('accountId') accountId: string,
   ) {
     return this.ledgerMovementsService.findByAccount(
-      BigInt(req.user.companyId),
       BigInt(accountId),
     );
   }
@@ -43,7 +41,6 @@ export class LedgerMovementsController {
     @Param('accountId') accountId: string,
   ) {
     return this.ledgerMovementsService.getBalance(
-      BigInt(req.user.companyId),
       BigInt(accountId),
     );
   }
@@ -52,7 +49,6 @@ export class LedgerMovementsController {
   findOne(@Request() req: AuthRequest, @Param('id') id: string) {
     return this.ledgerMovementsService.findOne(
       BigInt(id),
-      BigInt(req.user.companyId),
     );
   }
 }

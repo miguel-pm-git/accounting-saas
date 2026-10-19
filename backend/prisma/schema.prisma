@@ -148,7 +148,7 @@ model chart_accounts {
   id                   BigInt                   @id @default(autoincrement()) @db.UnsignedBigInt
   company_id           BigInt                   @db.UnsignedBigInt
   template_id          BigInt?                  @db.UnsignedBigInt
-  code                 String                   @unique(map: "uk_chart_accounts_code") @db.VarChar(30)
+  code                 String                   @db.VarChar(30)
   name                 String                   @db.VarChar(255)
   category             chart_accounts_category
   parent_id            BigInt?                  @db.UnsignedBigInt

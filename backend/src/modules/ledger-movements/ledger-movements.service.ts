@@ -2,16 +2,24 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../prisma/prisma.service.js';
 
+import { TenantContext } from '../../common/tenant/tenant.context.js';
+import { TenantBaseService } from '../../common/base/tenant-base.service.js';
+
 import { LedgerFilterDto } from './dto/ledger-filter.dto.js';
 
 @Injectable()
-export class LedgerMovementsService {
-  constructor(private readonly prisma: PrismaService) {}
+export class LedgerMovementsService extends TenantBaseService {
+  constructor(
+    tenantContext: TenantContext,
+    private readonly prisma: PrismaService,
+  ) {
+    super(tenantContext);
+  }
 
-  async findAll(companyId: bigint, filter?: LedgerFilterDto) {
+  async findAll(filter?: LedgerFilterDto) {
     return this.prisma.ledger_movements.findMany({
       where: {
-        company_id: companyId,
+        company_id: this.tenantContext.getCompanyId(),
 
         account_id: filter?.account_id ? BigInt(filter.account_id) : undefined,
 
@@ -38,10 +46,10 @@ export class LedgerMovementsService {
     });
   }
 
-  async findByAccount(companyId: bigint, accountId: bigint) {
+  async findByAccount(accountId: bigint) {
     return this.prisma.ledger_movements.findMany({
       where: {
-        company_id: companyId,
+        company_id: this.tenantContext.getCompanyId(),
         account_id: accountId,
       },
 
@@ -51,10 +59,10 @@ export class LedgerMovementsService {
     });
   }
 
-  async getBalance(companyId: bigint, accountId: bigint) {
+  async getBalance(accountId: bigint) {
     const lastMovement = await this.prisma.ledger_movements.findFirst({
       where: {
-        company_id: companyId,
+        company_id: this.tenantContext.getCompanyId(),
         account_id: accountId,
       },
 
@@ -74,11 +82,11 @@ export class LedgerMovementsService {
     };
   }
 
-  async findOne(id: bigint, companyId: bigint) {
+  async findOne(id: bigint) {
     const movement = await this.prisma.ledger_movements.findFirst({
       where: {
         id,
-        company_id: companyId,
+        company_id: this.tenantContext.getCompanyId(),
       },
 
       include: {

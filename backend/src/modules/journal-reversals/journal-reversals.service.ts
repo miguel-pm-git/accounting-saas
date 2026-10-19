@@ -12,16 +12,21 @@ import {
 
 import { PrismaService } from '../../prisma/prisma.service.js';
 
-@Injectable()
-export class JournalReversalsService {
-  constructor(private readonly prisma: PrismaService) {}
+import { TenantContext } from '../../common/tenant/tenant.context.js';
+import { TenantBaseService } from '../../common/base/tenant-base.service.js';
 
-  async reverse(
-    entryId: bigint,
-    companyId: bigint,
-    userId: bigint,
-    reason: string,
+@Injectable()
+export class JournalReversalsService extends TenantBaseService {
+  constructor(
+    tenantContext: TenantContext,
+    private readonly prisma: PrismaService,
   ) {
+    super(tenantContext);
+  }
+
+  async reverse(entryId: bigint, userId: bigint, reason: string) {
+    const companyId = this.getCompanyId();
+
     const original = await this.prisma.journal_entries.findFirst({
       where: {
         id: entryId,
@@ -85,11 +90,8 @@ export class JournalReversalsService {
         await tx.journal_entry_items.create({
           data: {
             entry_id: reversalEntry.id,
-
             account_id: item.account_id,
-
             amount: item.amount,
-
             description: item.description,
 
             type:

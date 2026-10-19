@@ -16,14 +16,22 @@ import { CreateJournalEntryDto } from './dto/create-journal-entry.dto.js';
 import { UpdateJournalEntryDto } from './dto/update-journal-entry.dto.js';
 import { LedgerMovementsService } from '../ledger-movements/ledger-movements.service.js';
 
+import { TenantContext } from '../../common/tenant/tenant.context.js';
+import { TenantBaseService } from '../../common/base/tenant-base.service.js';
+
 @Injectable()
-export class JournalEntriesService {
+export class JournalEntriesService extends TenantBaseService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly ledgerMovementsService: LedgerMovementsService,
-  ) {}
+    readonly tenantContext: TenantContext,
+  ) {
+    super(tenantContext);
+  }
 
-  async create(dto: CreateJournalEntryDto, companyId: bigint, userId: bigint) {
+  async create(dto: CreateJournalEntryDto, userId: bigint) {
+    const companyId = this.tenantContext.getCompanyId();
+
     const totalDebit = dto.items
       .filter((item) => item.type === journal_entry_items_type.DEBIT)
       .reduce((sum, item) => sum + Number(item.amount), 0);
@@ -98,10 +106,10 @@ export class JournalEntriesService {
     });
   }
 
-  async findAll(companyId: bigint) {
+  async findAll() {
     return this.prisma.journal_entries.findMany({
       where: {
-        company_id: companyId,
+        company_id: this.tenantContext.getCompanyId(),
       },
       include: {
         journal_entry_items: true,
@@ -112,11 +120,11 @@ export class JournalEntriesService {
     });
   }
 
-  async findOne(id: bigint, companyId: bigint) {
+  async findOne(id: bigint) {
     const entry = await this.prisma.journal_entries.findFirst({
       where: {
         id,
-        company_id: companyId,
+        company_id: this.tenantContext.getCompanyId(),
       },
       include: {
         journal_entry_items: true,
@@ -130,8 +138,8 @@ export class JournalEntriesService {
     return entry;
   }
 
-  async update(id: bigint, companyId: bigint, dto: UpdateJournalEntryDto) {
-    const entry = await this.findOne(id, companyId);
+  async update(id: bigint, dto: UpdateJournalEntryDto) {
+    const entry = await this.findOne(id);
 
     if (entry.status !== journal_entries_status.DRAFT) {
       throw new BadRequestException(
@@ -150,8 +158,8 @@ export class JournalEntriesService {
     });
   }
 
-  async remove(id: bigint, companyId: bigint) {
-    const entry = await this.findOne(id, companyId);
+  async remove(id: bigint) {
+    const entry = await this.findOne(id);
 
     if (entry.status !== journal_entries_status.DRAFT) {
       throw new BadRequestException(
@@ -174,11 +182,11 @@ export class JournalEntriesService {
     });
   }
 
-  async post(id: bigint, companyId: bigint) {
+  async post(id: bigint) {
     const entry = await this.prisma.journal_entries.findFirst({
       where: {
         id,
-        company_id: companyId,
+        company_id: this.tenantContext.getCompanyId(),
       },
       include: {
         journal_entry_items: true,

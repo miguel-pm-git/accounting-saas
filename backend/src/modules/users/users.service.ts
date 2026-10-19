@@ -6,11 +6,7 @@ import {
 
 import * as bcrypt from 'bcrypt';
 
-//import { Role } from '../../common/enums/role.enum.js';
-//import { Status } from '../../common/enums/status.enum.js';
-//import { UserStatus } from '@prisma/client';
 import { UserRole, UserStatus } from '../../generated/prisma/client.js';
-
 
 import { PrismaService } from '../../prisma/prisma.service.js';
 
@@ -19,11 +15,21 @@ import { UpdateUserDto } from './dto/update-user.dto.js';
 
 import { serializeBigInt } from '../../common/utils/bigint.util.js';
 
-@Injectable()
-export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+import { TenantContext } from '../../common/tenant/tenant.context.js';
+import { TenantBaseService } from '../../common/base/tenant-base.service.js';
 
-  async create(dto: CreateUserDto, companyId: bigint) {
+@Injectable()
+export class UsersService extends TenantBaseService {
+  constructor(
+    tenantContext: TenantContext,
+    private readonly prisma: PrismaService,
+  ) {
+    super(tenantContext);
+  }
+
+  async create(dto: CreateUserDto) {
+    const companyId = this.getCompanyId();
+
     const exists = await this.prisma.users.findFirst({
       where: {
         company_id: companyId,
@@ -54,10 +60,10 @@ export class UsersService {
     return serializeBigInt(result);
   }
 
-  async findAll(companyId: bigint) {
+  async findAll() {
     const users = await this.prisma.users.findMany({
       where: {
-        company_id: companyId,
+        company_id: this.getCompanyId(),
       },
       select: {
         id: true,
@@ -77,11 +83,11 @@ export class UsersService {
     return serializeBigInt(users);
   }
 
-  async findOne(id: bigint, companyId: bigint) {
+  async findOne(id: bigint) {
     const user = await this.prisma.users.findFirst({
       where: {
         id,
-        company_id: companyId,
+        company_id: this.getCompanyId(),
       },
     });
 
@@ -94,8 +100,8 @@ export class UsersService {
     return serializeBigInt(result);
   }
 
-  async update(id: bigint, companyId: bigint, dto: UpdateUserDto) {
-    await this.findOne(id, companyId);
+  async update(id: bigint, dto: UpdateUserDto) {
+    await this.findOne(id);
 
     const data: any = {
       ...dto,
@@ -119,8 +125,8 @@ export class UsersService {
     return serializeBigInt(result);
   }
 
-  async remove(id: bigint, companyId: bigint) {
-    await this.findOne(id, companyId);
+  async remove(id: bigint) {
+    await this.findOne(id);
 
     const user = await this.prisma.users.update({
       where: {

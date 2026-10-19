@@ -6,10 +6,14 @@ import {
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { CreateChartAccountTemplateDto } from './dto/create-chart-account-template.dto.js';
 import { UpdateChartAccountTemplateDto } from './dto/update-chart-account-template.dto.js';
+import { TenantContext } from '../../common/tenant/tenant.context.js';
 
 @Injectable()
 export class ChartAccountTemplatesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly tenantContext: TenantContext,
+  ) {}
 
   async create(dto: CreateChartAccountTemplateDto) {
     const exists = await this.prisma.chart_account_templates.findFirst({
@@ -57,6 +61,7 @@ export class ChartAccountTemplatesService {
         children: true,
         chart_plans: true,
       },
+
       orderBy: {
         code: 'asc',
       },
@@ -67,6 +72,7 @@ export class ChartAccountTemplatesService {
     return this.prisma.chart_account_templates.findMany({
       where: {
         chart_plan_id: chartPlanId,
+
       },
       include: {
         parent: true,

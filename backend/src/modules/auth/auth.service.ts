@@ -1,9 +1,15 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 
+import { ConfigService } from '@nestjs/config';
+
 import { JwtService } from '@nestjs/jwt';
+
 import * as bcrypt from 'bcrypt';
 
 import { PrismaService } from '../../prisma/prisma.service.js';
+
+import { UserStatus } from '../../generated/prisma/client.js';
+
 import { LoginDto } from './dto/login.dto.js';
 
 @Injectable()
@@ -11,15 +17,23 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
   ) {}
 
   async validateUser(email: string, password: string) {
     const user = await this.prisma.users.findFirst({
-      where: { email: email },
+      where: {
+        email,
+        active: true,
+      },
     });
 
     if (!user) {
       throw new UnauthorizedException('Usuário ou senha inválidos');
+    }
+
+    if (user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException('Usuário inativo ou suspenso');
     }
 
     const passwordValid = await bcrypt.compare(password, user.password_hash);
@@ -41,16 +55,15 @@ export class AuthService {
       email: user.email,
       role: user.role,
       status: user.status,
-      companyId: user.company_id ? user.company_id.toString() : undefined,
+      companyId: user.company_id.toString(),
     };
 
     return {
-      access_token: this.jwtService.sign(payload, {
-        secret: process.env.JWT_SECRET,
-      }),
+      access_token: this.jwtService.sign(payload),
+
       user: {
         id: user.id.toString(),
-        company_id: user.company_id ? user.company_id.toString() : undefined,
+        company_id: user.company_id.toString(),
         name: user.name,
         email: user.email,
         role: user.role,
@@ -59,11 +72,12 @@ export class AuthService {
     };
   }
 
-  async me(userId: number) {
-    return this.prisma.users.findUnique({
+  async me(userId: bigint) {
+    const user = await this.prisma.users.findUnique({
       where: {
         id: userId,
       },
+
       select: {
         id: true,
         name: true,
@@ -74,5 +88,15 @@ export class AuthService {
         created_at: true,
       },
     });
+
+    if (!user) {
+      throw new UnauthorizedException('Usuário não encontrado');
+    }
+
+    return {
+      ...user,
+      id: user.id.toString(),
+      company_id: user.company_id.toString(),
+    };
   }
 }

@@ -35,26 +35,25 @@ export class UsersController {
   @Post()
   @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN)
   create(@Body() dto: CreateUserDto, @Request() req: AuthenticatedRequest) {
-    return this.usersService.create(dto, BigInt(req.user.companyId));
+    return this.usersService.create(dto);
   }
 
   @Get()
   @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.MANAGER)
   findAll(@Request() req: AuthenticatedRequest) {
-    return this.usersService.findAll(BigInt(req.user.companyId));
+    return this.usersService.findAll();
   }
 
   @Get('me')
   getMe(@Request() req: { user: any }) {
     return this.usersService.findOne(
       BigInt(req.user.sub),
-      BigInt(req.user.companyId),
     );
   }
 
   @Get(':id')
   findOne(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
-    return this.usersService.findOne(BigInt(id), BigInt(req.user.companyId));
+    return this.usersService.findOne(BigInt(id));
   }
 
   @Patch(':id')
@@ -66,7 +65,6 @@ export class UsersController {
   ) {
     return this.usersService.update(
       BigInt(id),
-      BigInt(req.user.companyId),
       dto,
     );
   }
@@ -74,6 +72,6 @@ export class UsersController {
   @Delete(':id')
   @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN)
   remove(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
-    return this.usersService.remove(BigInt(id), BigInt(req.user.companyId));
+    return this.usersService.remove(BigInt(id));
   }
 }

@@ -20,12 +20,17 @@ import { ChartAccountTemplatesModule } from './modules/chart-account-templates/c
 import { CompanyAccountsModule } from './modules/company-accounts/company-accounts.module.js';
 import { LedgerMovementsModule } from './modules/ledger-movements/ledger-movements.module.js';
 import { JournalReversalsModule } from './modules/journal-reversals/journal-reversals.module.js';
+import { TenantModule } from './common/tenant/tenant.module.js';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { TenantInterceptor } from './common/interceptors/tenant.interceptor.js';
+import jwtConfig from './config/jwt.config.js';
 
 @Module({
   imports: [
     AuthModule,
     ConfigModule.forRoot({
       isGlobal: true,
+      load: [jwtConfig],
     }),
     UsersModule,
     CompaniesModule,
@@ -44,8 +49,15 @@ import { JournalReversalsModule } from './modules/journal-reversals/journal-reve
     CompanyAccountsModule,
     LedgerMovementsModule,
     JournalReversalsModule,
+    TenantModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TenantInterceptor,
+    },
+  ],
 })
 export class AppModule {}

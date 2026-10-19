@@ -24,7 +24,6 @@ export class JournalReversalsController {
   ) {
     return this.service.reverse(
       BigInt(entryId),
-      BigInt(req.user.companyId),
       BigInt(req.user.sub),
       dto.reason,
     );

@@ -102,14 +102,14 @@ model cash_movements {
 ///
 /// Plano de Contas (Catálogo)
 model chart_plans {
-  id            BigInt                    @id @default(autoincrement()) @db.UnsignedBigInt
-  code          String                    @unique(map: "uk_chart_plan_code") @db.VarChar(50)
-  name          String                    @db.VarChar(255)
-  description   String?                   @db.VarChar(1000)
-  active        Boolean                   @default(true)
-  created_at    DateTime?                 @default(now()) @db.DateTime(0)
-  templates     chart_account_templates[]
-  companies     companies[]
+  id          BigInt                    @id @default(autoincrement()) @db.UnsignedBigInt
+  code        String                    @unique(map: "uk_chart_plan_code") @db.VarChar(50)
+  name        String                    @db.VarChar(255)
+  description String?                   @db.VarChar(1000)
+  active      Boolean                   @default(true)
+  created_at  DateTime?                 @default(now()) @db.DateTime(0)
+  templates   chart_account_templates[]
+  companies   companies[]
 
   @@index([active], map: "idx_chart_plan_active")
 }
@@ -118,19 +118,19 @@ model chart_plans {
 ///
 /// Substitui o atual chart_accounts global.
 model chart_account_templates {
-  id              BigInt                    @id @default(autoincrement()) @db.UnsignedBigInt
-  chart_plan_id   BigInt                    @db.UnsignedBigInt
-  code            String                    @db.VarChar(30)
-  name            String                    @db.VarChar(255)
-  category        chart_accounts_category
-  parent_id       BigInt?                   @db.UnsignedBigInt
-  analytical      Boolean                   @default(true)
-  active          Boolean                   @default(true)
-  created_at      DateTime?                 @default(now()) @db.DateTime(0)
-  chart_plans     chart_plans               @relation(fields: [chart_plan_id], references: [id], map: "fk_template_plan")
-  parent          chart_account_templates?  @relation("template_tree", fields: [parent_id], references: [id], map: "fk_template_parent")
-  children        chart_account_templates[] @relation("template_tree")
-  chart_accounts  chart_accounts[]
+  id             BigInt                    @id @default(autoincrement()) @db.UnsignedBigInt
+  chart_plan_id  BigInt                    @db.UnsignedBigInt
+  code           String                    @db.VarChar(30)
+  name           String                    @db.VarChar(255)
+  category       chart_accounts_category
+  parent_id      BigInt?                   @db.UnsignedBigInt
+  analytical     Boolean                   @default(true)
+  active         Boolean                   @default(true)
+  created_at     DateTime?                 @default(now()) @db.DateTime(0)
+  chart_plans    chart_plans               @relation(fields: [chart_plan_id], references: [id], map: "fk_template_plan")
+  parent         chart_account_templates?  @relation("template_tree", fields: [parent_id], references: [id], map: "fk_template_parent")
+  children       chart_account_templates[] @relation("template_tree")
+  chart_accounts chart_accounts[]
 
   @@unique([chart_plan_id, code], map: "uk_template_plan_code")
   @@index([chart_plan_id], map: "idx_template_plan")
@@ -138,30 +138,28 @@ model chart_account_templates {
   @@index([category], map: "idx_template_category")
 }
 
-
-
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 /// Esta é a tabela utilizada pela contabilidade.
 /// Todos os lançamentos apontam APENAS para ela.
 
 model chart_accounts {
-  id                   BigInt                   @id @default(autoincrement()) @db.UnsignedBigInt
-  company_id           BigInt                   @db.UnsignedBigInt
-  template_id          BigInt?                  @db.UnsignedBigInt
-  code                 String                   @db.VarChar(30)
-  name                 String                   @db.VarChar(255)
-  category             chart_accounts_category
-  parent_id            BigInt?                  @db.UnsignedBigInt
-  analytical           Boolean                  @default(true)
-  active               Boolean                  @default(true)
-  created_at           DateTime?                @default(now()) @db.DateTime(0)
-  companies            companies                @relation(fields: [company_id], references: [id], map: "fk_chart_account_company")
-  template             chart_account_templates? @relation(fields: [template_id], references: [id],map: "fk_chart_account_template")
-  parent               chart_accounts?          @relation("chart_account_tree", fields: [parent_id], references: [id], map: "fk_chart_account_parent")
-  children             chart_accounts[]         @relation("chart_account_tree")
-  company_accounts     company_accounts[]
-  journal_entry_items  journal_entry_items[]
-  ledger_movements     ledger_movements[]
+  id                  BigInt                   @id @default(autoincrement()) @db.UnsignedBigInt
+  company_id          BigInt                   @db.UnsignedBigInt
+  template_id         BigInt?                  @db.UnsignedBigInt
+  code                String                   @db.VarChar(30)
+  name                String                   @db.VarChar(255)
+  category            chart_accounts_category
+  parent_id           BigInt?                  @db.UnsignedBigInt
+  analytical          Boolean                  @default(true)
+  active              Boolean                  @default(true)
+  created_at          DateTime?                @default(now()) @db.DateTime(0)
+  companies           companies                @relation(fields: [company_id], references: [id], map: "fk_chart_account_company")
+  template            chart_account_templates? @relation(fields: [template_id], references: [id], map: "fk_chart_account_template")
+  parent              chart_accounts?          @relation("chart_account_tree", fields: [parent_id], references: [id], map: "fk_chart_account_parent")
+  children            chart_accounts[]         @relation("chart_account_tree")
+  company_accounts    company_accounts[]
+  journal_entry_items journal_entry_items[]
+  ledger_movements    ledger_movements[]
 
   @@unique([company_id, code], map: "uk_company_chart_account_code")
   @@index([company_id])
@@ -174,14 +172,14 @@ model chart_accounts {
 ///
 /// Agora esta tabela passa a guardar preferências específicas.
 model company_accounts {
-  id                BigInt         @id @default(autoincrement()) @db.UnsignedBigInt
-  company_id        BigInt         @db.UnsignedBigInt
-  chart_account_id  BigInt         @db.UnsignedBigInt
-  favorite          Boolean        @default(false)
-  notes             String?        @db.VarChar(1000)
-  created_at        DateTime?      @default(now()) @db.DateTime(0)
-  companies         companies      @relation(fields: [company_id], references: [id])
-  chart_accounts    chart_accounts @relation(fields: [chart_account_id], references: [id])
+  id               BigInt         @id @default(autoincrement()) @db.UnsignedBigInt
+  company_id       BigInt         @db.UnsignedBigInt
+  chart_account_id BigInt         @db.UnsignedBigInt
+  favorite         Boolean        @default(false)
+  notes            String?        @db.VarChar(1000)
+  created_at       DateTime?      @default(now()) @db.DateTime(0)
+  companies        companies      @relation(fields: [company_id], references: [id])
+  chart_accounts   chart_accounts @relation(fields: [chart_account_id], references: [id])
 
   @@unique([company_id, chart_account_id], map: "uk_company_account")
 }
@@ -211,7 +209,10 @@ model companies {
   receivables       receivables[]
   suppliers         suppliers[]
   chart_accounts    chart_accounts[]
-  chart_plans       chart_plans?       @relation(fields: [chart_plan_id], references: [id], map: "fk_company_chart_plan")
+  chart_plans       chart_plans?        @relation(fields: [chart_plan_id], references: [id], map: "fk_company_chart_plan")
+  subscriptions     subscriptions[]
+  invoices          invoices[]
+  payments          payments[]
 
   @@index([chart_plan_id])
   @@index([active], map: "idx_companies_active")
@@ -228,10 +229,9 @@ model customers {
   companies       companies     @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_customers_company")
   receivables     receivables[]
 
+  @@unique([company_id, document_number], map: "uk_customer_company_document")
   @@index([company_id], map: "idx_customer_company")
   @@index([document_number], map: "idx_customer_doc")
-
-  @@unique([company_id, document_number], map: "uk_customer_company_document")
 }
 
 model journal_entries {
@@ -331,19 +331,19 @@ model ledger_movements {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model payables {
-  id          BigInt          @id @default(autoincrement()) @db.UnsignedBigInt
-  company_id  BigInt          @db.UnsignedBigInt
-  supplier_id BigInt?         @db.UnsignedBigInt
-  issue_date  DateTime        @db.Date
-  due_date    DateTime        @db.Date
-  amount      Decimal         @db.Decimal(18, 2)
-  paid_amount Decimal         @default(0.00) @db.Decimal(18, 2)
-  description String?         @db.VarChar(255)
-  status      payables_status @default(OPEN)
-  created_at  DateTime        @default(now()) @db.DateTime(0)
-  updated_at  DateTime        @default(now()) @db.DateTime(0)
-  companies   companies       @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_payable_company")
-  suppliers   suppliers?      @relation(fields: [supplier_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_payable_supplier")
+  id          BigInt             @id @default(autoincrement()) @db.UnsignedBigInt
+  company_id  BigInt             @db.UnsignedBigInt
+  supplier_id BigInt?            @db.UnsignedBigInt
+  issue_date  DateTime           @db.Date
+  due_date    DateTime           @db.Date
+  amount      Decimal            @db.Decimal(18, 2)
+  paid_amount Decimal            @default(0.00) @db.Decimal(18, 2)
+  description String?            @db.VarChar(255)
+  status      payables_status    @default(OPEN)
+  created_at  DateTime           @default(now()) @db.DateTime(0)
+  updated_at  DateTime           @default(now()) @db.DateTime(0)
+  companies   companies          @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_payable_company")
+  suppliers   suppliers?         @relation(fields: [supplier_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_payable_supplier")
   payments    payable_payments[]
 
   @@index([company_id], map: "idx_payable_company")
@@ -387,8 +387,8 @@ model suppliers {
   payables        payables[]
   companies       companies  @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_suppliers_company")
 
-  @@index([company_id], map: "idx_supplier_company")
   @@unique([company_id, document_number], map: "uk_supplier_company_doc")
+  @@index([company_id], map: "idx_supplier_company")
 }
 
 model users {
@@ -408,6 +408,182 @@ model users {
   @@unique([company_id, id], map: "uk_user_company")
 }
 
+model payable_payments {
+  id               BigInt                  @id @default(autoincrement()) @db.UnsignedBigInt
+  payable_id       BigInt                  @db.UnsignedBigInt
+  payment_date     DateTime                @db.Date
+  amount           Decimal                 @db.Decimal(18, 2)
+  payment_method   payable_payment_method?
+  document_number  String?                 @db.VarChar(100)
+  notes            String?                 @db.VarChar(1000)
+  journal_entry_id BigInt?                 @db.UnsignedBigInt
+  created_at       DateTime                @default(now()) @db.DateTime(0)
+
+  payables        payables         @relation(fields: [payable_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_payment_payable")
+  journal_entries journal_entries? @relation(fields: [journal_entry_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_payment_journal")
+
+  @@index([payable_id], map: "idx_payment_payable")
+  @@index([payment_date], map: "idx_payment_date")
+  @@index([journal_entry_id], map: "idx_payment_journal")
+}
+
+model plans {
+  id                BigInt                 @id @default(autoincrement()) @db.UnsignedBigInt
+  code              String                 @unique(map: "uk_plan_code") @db.VarChar(50)
+  name              String                 @db.VarChar(255)
+  description       String?                @db.VarChar(1000)
+  billing_period    billing_period
+  price             Decimal                @db.Decimal(18, 2)
+  trial_days        Int                    @default(14)
+  active            Boolean                @default(true)
+  display_order     Int                    @default(0)
+  featured          Boolean                @default(false)
+  created_at        DateTime               @default(now()) @db.DateTime(0)
+  subscriptions     subscriptions[]
+  plan_features     plan_features[]
+  plan_limits       plan_limits[]
+  old_subscriptions subscription_history[] @relation("old_plan")
+  new_subscriptions subscription_history[] @relation("new_plan")
+
+  @@index([active], map: "idx_plan_active")
+}
+
+model features {
+  id            BigInt          @id @default(autoincrement()) @db.UnsignedBigInt
+  code          String          @unique(map: "uk_feature_code") @db.VarChar(100)
+  name          String          @db.VarChar(255)
+  description   String?         @db.VarChar(1000)
+  active        Boolean         @default(true)
+  category      String?         @db.VarChar(50)
+  created_at    DateTime        @default(now()) @db.DateTime(0)
+  plan_features plan_features[]
+
+  @@index([active], map: "idx_feature_active")
+}
+
+model plan_features {
+  id         BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  plan_id    BigInt   @db.UnsignedBigInt
+  feature_id BigInt   @db.UnsignedBigInt
+  created_at DateTime @default(now()) @db.DateTime(0)
+  plans      plans    @relation(fields: [plan_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_plan_feature_plan")
+  features   features @relation(fields: [feature_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_plan_feature_feature")
+
+  @@unique([plan_id, feature_id], map: "uk_plan_feature")
+  @@index([plan_id], map: "idx_plan_feature_plan")
+  @@index([feature_id], map: "idx_plan_feature_feature")
+}
+
+model plan_limits {
+  id            BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  plan_id       BigInt   @db.UnsignedBigInt
+  resource_code String   @db.VarChar(100)
+  limit_value   Int
+  created_at    DateTime @default(now()) @db.DateTime(0)
+  plans         plans    @relation(fields: [plan_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_plan_limit_plan")
+
+  @@unique([plan_id, resource_code], map: "uk_plan_limit")
+  @@index([plan_id], map: "idx_plan_limit_plan")
+}
+
+model subscriptions {
+  id                         BigInt                       @id @default(autoincrement()) @db.UnsignedBigInt
+  company_id                 BigInt                       @db.UnsignedBigInt
+  plan_id                    BigInt                       @db.UnsignedBigInt
+  status                     subscription_status
+  started_at                 DateTime                     @db.Date
+  trial_ends_at              DateTime?                    @db.Date
+  current_period_start       DateTime?                    @db.Date
+  current_period_end         DateTime?                    @db.Date
+  cancelled_at               DateTime?                    @db.Date
+  external_customer_id       String?                      @db.VarChar(255)
+  external_subscription_id   String?                      @db.VarChar(255)
+  created_at                 DateTime                     @default(now()) @db.DateTime(0)
+  updated_at                 DateTime                     @default(now()) @db.DateTime(0)
+  companies                  companies                    @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_subscription_company")
+  plans                      plans                        @relation(fields: [plan_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_subscription_plan")
+  invoices                   invoices[]
+  subscription_history       subscription_history[]
+  subscription_cancellations subscription_cancellations[]
+
+  @@unique([company_id], map: "uk_subscription_company")
+  @@index([company_id], map: "idx_subscription_company")
+  @@index([plan_id], map: "idx_subscription_plan")
+  @@index([status], map: "idx_subscription_status")
+}
+
+model subscription_history {
+  id              BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
+  subscription_id BigInt        @db.UnsignedBigInt
+  old_plan_id     BigInt?       @db.UnsignedBigInt
+  new_plan_id     BigInt?       @db.UnsignedBigInt
+  notes           String?       @db.VarChar(1000)
+  changed_at      DateTime      @default(now()) @db.DateTime(0)
+  subscriptions   subscriptions @relation(fields: [subscription_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_subscription_history_subscription")
+  old_plan        plans?        @relation("old_plan", fields: [old_plan_id], references: [id])
+  new_plan        plans?        @relation("new_plan", fields: [new_plan_id], references: [id])
+
+  @@index([subscription_id], map: "idx_subscription_history_sub")
+  @@index([old_plan_id], map: "idx_subscription_history_old_plan")
+  @@index([new_plan_id], map: "idx_subscription_history_new_plan")
+}
+
+model invoices {
+  id                  BigInt         @id @default(autoincrement()) @db.UnsignedBigInt
+  company_id          BigInt         @db.UnsignedBigInt
+  subscription_id     BigInt         @db.UnsignedBigInt
+  invoice_number      String         @db.VarChar(50)
+  issue_date          DateTime       @db.Date
+  due_date            DateTime       @db.Date
+  amount              Decimal        @db.Decimal(18, 2)
+  paid_at             DateTime?      @db.DateTime(0)
+  status              invoice_status
+  gateway_reference   String?        @db.VarChar(255)
+  external_invoice_id String?        @db.VarChar(255)
+  created_at          DateTime       @default(now()) @db.DateTime(0)
+  updated_at          DateTime       @default(now()) @db.DateTime(0)
+  companies           companies      @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_invoice_company")
+  subscriptions       subscriptions  @relation(fields: [subscription_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_invoice_subscription")
+  payments            payments[]
+
+  @@index([company_id], map: "idx_invoice_company")
+  @@index([subscription_id], map: "idx_invoice_subscription")
+  @@index([status], map: "idx_invoice_status")
+  @@index([due_date], map: "idx_invoice_due_date")
+  @@index([company_id, status], map: "idx_invoice_company_status")
+}
+
+model payments {
+  id               BigInt          @id @default(autoincrement()) @db.UnsignedBigInt
+  company_id       BigInt          @db.UnsignedBigInt
+  invoice_id       BigInt          @db.UnsignedBigInt
+  gateway          payment_gateway
+  transaction_id   String?         @db.VarChar(255)
+  gateway_response Json?
+  amount           Decimal         @db.Decimal(18, 2)
+  paid_at          DateTime?       @db.DateTime(0)
+  status           payment_status
+  created_at       DateTime        @default(now()) @db.DateTime(0)
+  companies        companies       @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_payment_company")
+  invoices         invoices        @relation(fields: [invoice_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_payment_invoice")
+
+  @@index([company_id], map: "idx_payment_company")
+  @@index([invoice_id], map: "idx_payment_invoice")
+  @@index([status], map: "idx_payment_status")
+}
+
+model subscription_cancellations {
+  id              BigInt              @id @default(autoincrement()) @db.UnsignedBigInt
+  subscription_id BigInt              @db.UnsignedBigInt
+  reason          cancellation_reason
+  notes           String?             @db.VarChar(1000)
+  created_at      DateTime            @default(now()) @db.DateTime(0)
+  subscriptions   subscriptions       @relation(fields: [subscription_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_subscription_cancel")
+
+  @@index([subscription_id], map: "idx_subscription_cancel_sub")
+  @@index([reason], map: "idx_subscription_cancel_reason")
+}
+
 enum payable_payment_method {
   CASH
   PIX
@@ -418,25 +594,6 @@ enum payable_payment_method {
   CREDIT_CARD
   DEBIT_CARD
   OTHER
-}
-
-model payable_payments {
-  id                  BigInt                   @id @default(autoincrement()) @db.UnsignedBigInt
-  payable_id          BigInt                   @db.UnsignedBigInt
-  payment_date        DateTime                 @db.Date
-  amount              Decimal                  @db.Decimal(18, 2)
-  payment_method      payable_payment_method?
-  document_number     String?                  @db.VarChar(100)
-  notes               String?                  @db.VarChar(1000)
-  journal_entry_id    BigInt?                  @db.UnsignedBigInt
-  created_at          DateTime                 @default(now()) @db.DateTime(0)
-
-  payables            payables                 @relation(fields: [payable_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_payment_payable")
-  journal_entries     journal_entries?         @relation(fields: [journal_entry_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_payment_journal")
-
-  @@index([payable_id], map: "idx_payment_payable")
-  @@index([payment_date], map: "idx_payment_date")
-  @@index([journal_entry_id], map: "idx_payment_journal")
 }
 
 enum UserRole {
@@ -511,4 +668,50 @@ enum receivables_status {
   PARTIAL
   PAID
   CANCELLED
+}
+
+enum billing_period {
+  MONTHLY
+  YEARLY
+}
+
+enum subscription_status {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  SUSPENDED
+  CANCELED
+  EXPIRED
+}
+
+enum invoice_status {
+  PENDING
+  PAID
+  OVERDUE
+  VOIDED
+  REFUNDED
+}
+
+enum payment_gateway {
+  STRIPE
+  PAGARME
+  MERCADO_PAGO
+  MANUAL
+}
+
+enum payment_status {
+  PENDING
+  AUTHORIZED
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum cancellation_reason {
+  TOO_EXPENSIVE
+  MISSING_FEATURES
+  SWITCHED_COMPETITOR
+  BAD_SUPPORT
+  BUSINESS_CLOSED
+  OTHER
 }

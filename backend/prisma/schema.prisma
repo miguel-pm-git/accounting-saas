@@ -195,6 +195,7 @@ model companies {
   phone             String?             @db.VarChar(30)
   active            Boolean             @default(true)
   chart_plan_id     BigInt?             @db.UnsignedBigInt
+  asaas_customer_id String?             @db.VarChar(255)
   created_at        DateTime            @default(now()) @db.DateTime(0)
   updated_at        DateTime?           @db.DateTime(0)
   audit_logs        audit_logs[]
@@ -697,6 +698,7 @@ enum payment_gateway {
   PAGARME
   MERCADO_PAGO
   MANUAL
+  ASAAS
 }
 
 enum payment_status {

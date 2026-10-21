@@ -9,6 +9,14 @@ import { ConfirmPaymentDto } from './dto/confirm-payment.dto.js';
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
+  @Post('invoice/:invoiceId/charge')
+  createCharge(
+    @Param('invoiceId')
+    invoiceId: string,
+  ) {
+    return this.paymentsService.createCharge(BigInt(invoiceId));
+  }
+
   @Post()
   create(@Body() dto: CreatePaymentDto) {
     return this.paymentsService.create(dto);

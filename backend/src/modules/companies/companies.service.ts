@@ -1,4 +1,8 @@
-import { Injectable, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 
 import { v4 as uuidv4 } from 'uuid';
 
@@ -8,9 +12,14 @@ import { CreateCompanyDto } from './dto/create-company.dto.js';
 
 import { serializeBigInt } from '../../common/utils/bigint.util.js';
 
+import { AsaasGateway } from '../payments/gateways/asaas.gateway.js';
+
 @Injectable()
 export class CompaniesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly asaasGateway: AsaasGateway,
+  ) {}
 
   async create(createCompanyDto: CreateCompanyDto) {
     const companyExists = await this.prisma.companies.findUnique({
@@ -35,6 +44,22 @@ export class CompaniesService {
       },
     });
 
+    const customerId = await this.asaasGateway.createCustomer({
+      name: company.trade_name ?? company.legal_name,
+      email: company.email ?? undefined,
+      phone: company.phone ?? undefined,
+      cpfCnpj: company.tax_id,
+    });
+
+    await this.prisma.companies.update({
+      where: {
+        id: company.id,
+      },
+      data: {
+        asaas_customer_id: customerId,
+      },
+    });
+
     return serializeBigInt(company);
   }
 
@@ -56,5 +81,35 @@ export class CompaniesService {
     });
 
     return serializeBigInt(company);
+  }
+
+  async createAsaasCustomer(companyId: bigint) {
+    const company = await this.prisma.companies.findUnique({
+      where: { id: companyId },
+    });
+
+    if (!company) {
+      throw new NotFoundException('Empresa não encontrada');
+    }
+
+    if (company.asaas_customer_id) {
+      return company.asaas_customer_id;
+    }
+
+    const customerId = await this.asaasGateway.createCustomer({
+      name: company.trade_name ?? company.legal_name,
+      email: company.email ?? undefined,
+      phone: company.phone ?? undefined,
+      cpfCnpj: company.tax_id,
+    });
+
+    await this.prisma.companies.update({
+      where: { id: companyId },
+      data: {
+        asaas_customer_id: customerId,
+      },
+    });
+
+    return customerId;
   }
 }

@@ -1,9 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { TenantContext } from '../../common/tenant/tenant.context.js';
 
-import { invoice_status } from '../../generated/prisma/client.js';
+import {
+  invoice_status,
+  subscription_status,
+} from '../../generated/prisma/client.js';
+import { serializeBigInt } from '../../common/utils/bigint.util.js';
 
 @Injectable()
 export class InvoicesService {
@@ -12,10 +16,8 @@ export class InvoicesService {
     private readonly tenantContext: TenantContext,
   ) {}
 
-  async findAll() {
-    const companyId = this.tenantContext.getCompanyId();
-
-    return this.prisma.invoices.findMany({
+  async findAll(companyId: bigint) {
+    const invoices = await this.prisma.invoices.findMany({
       where: {
         company_id: companyId,
       },
@@ -26,6 +28,8 @@ export class InvoicesService {
         created_at: 'desc',
       },
     });
+
+    return serializeBigInt(invoices);
   }
 
   async findOne(id: bigint) {
@@ -42,7 +46,7 @@ export class InvoicesService {
       throw new NotFoundException('Invoice não encontrada');
     }
 
-    return invoice;
+    return serializeBigInt(invoice);
   }
 
   async markAsPaid(id: bigint, reference?: string) {
@@ -59,7 +63,11 @@ export class InvoicesService {
       throw new NotFoundException('Invoice não encontrada');
     }
 
-    return this.prisma.invoices.update({
+    if (invoice.status === invoice_status.PAID) {
+      throw new BadRequestException('Fatura já foi processada');
+    }
+
+    const invoicePaid = await this.prisma.invoices.update({
       where: {
         id,
       },
@@ -69,6 +77,26 @@ export class InvoicesService {
         gateway_reference: reference,
       },
     });
+
+    const subscription = await this.prisma.subscriptions.update({
+      where: {
+        id: invoice.subscription_id,
+      },
+      data: {
+        status: subscription_status.ACTIVE,
+      },
+    });
+
+    await this.prisma.subscription_history.create({
+      data: {
+        subscription_id: subscription.id,
+        old_plan_id: subscription.plan_id,
+        new_plan_id: subscription.plan_id,
+        notes: 'Pagamento confirmado',
+      },
+    });
+
+    return serializeBigInt(invoicePaid);
   }
 
   async generateInvoice(subscriptionId: bigint) {
@@ -105,9 +133,10 @@ export class InvoicesService {
     });
   }
 
-  async findOverdue() {
+  async findOverdue(companyId: bigint) {
     return this.prisma.invoices.findMany({
       where: {
+        company_id: companyId,
         due_date: {
           lt: new Date(),
         },
@@ -116,9 +145,6 @@ export class InvoicesService {
       include: {
         subscriptions: true,
         companies: true,
-      },
-      orderBy: {
-        due_date: 'asc',
       },
     });
   }

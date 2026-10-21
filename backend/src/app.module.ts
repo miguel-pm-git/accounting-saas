@@ -22,6 +22,7 @@ import { LedgerMovementsModule } from './modules/ledger-movements/ledger-movemen
 import { JournalReversalsModule } from './modules/journal-reversals/journal-reversals.module.js';
 import { TenantModule } from './common/tenant/tenant.module.js';
 import { APP_INTERCEPTOR } from '@nestjs/core';
+import { Scope } from '@nestjs/common';
 import { TenantInterceptor } from './common/interceptors/tenant.interceptor.js';
 import jwtConfig from './config/jwt.config.js';
 import { PlansModule } from './modules/plans/plans.module.js';
@@ -68,6 +69,7 @@ import { BillingModule } from './modules/billing/billing.module.js';
     AppService,
     {
       provide: APP_INTERCEPTOR,
+      scope: Scope.REQUEST,
       useClass: TenantInterceptor,
     },
   ],

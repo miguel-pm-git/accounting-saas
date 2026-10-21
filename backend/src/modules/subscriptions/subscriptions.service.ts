@@ -15,6 +15,7 @@ import { ChangePlanDto } from './dto/change-plan.dto.js';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto.js';
 import { CancelSubscriptionDto } from './dto/cancel-subscription.dto.js';
 import { InvoicesService } from '../invoices/invoices.service.js';
+import { serializeBigInt } from '../../common/utils/bigint.util.js';
 
 @Injectable()
 export class SubscriptionsService {
@@ -61,10 +62,13 @@ export class SubscriptionsService {
         company_id: BigInt(dto.company_id),
         plan_id: BigInt(dto.plan_id),
 
-        status: subscription_status.TRIALING,
+        status:
+          plan.trial_days > 0
+            ? subscription_status.TRIALING
+            : subscription_status.PAST_DUE,
 
         started_at: today,
-        trial_ends_at: trialEndsAt,
+        trial_ends_at: plan.trial_days > 0 ? trialEndsAt : null,
 
         current_period_start: today,
         current_period_end: trialEndsAt,
@@ -74,15 +78,23 @@ export class SubscriptionsService {
       },
     });
 
+    await this.prisma.subscription_history.create({
+      data: {
+        subscription_id: subscription.id,
+        new_plan_id: subscription.plan_id,
+        notes: 'Assinatura criada',
+      },
+    });
+
     if (plan.trial_days === 0) {
       await this.invoicesService.generateInvoice(subscription.id);
     }
 
-    return subscription;
+    return serializeBigInt(subscription);
   }
 
   async findAll() {
-    return this.prisma.subscriptions.findMany({
+    const subscriptions = await this.prisma.subscriptions.findMany({
       include: {
         plans: true,
         companies: true,
@@ -91,6 +103,8 @@ export class SubscriptionsService {
         created_at: 'desc',
       },
     });
+
+    return serializeBigInt(subscriptions);
   }
 
   async findOne(id: bigint) {
@@ -107,19 +121,11 @@ export class SubscriptionsService {
       throw new NotFoundException('Assinatura não encontrada');
     }
 
-    await this.prisma.subscription_history.create({
-      data: {
-        subscription_id: subscription.id,
-        new_plan_id: subscription.plan_id,
-        notes: 'Assinatura criada',
-      },
-    });
-
-    return subscription;
+    return serializeBigInt(subscription);
   }
 
   async getActiveByCompany(companyId: bigint) {
-    return this.prisma.subscriptions.findFirst({
+    const subscription = await this.prisma.subscriptions.findFirst({
       where: {
         company_id: companyId,
         status: {
@@ -134,6 +140,8 @@ export class SubscriptionsService {
         plans: true,
       },
     });
+
+    return serializeBigInt(subscription);
   }
 
   async changePlan(subscriptionId: bigint, dto: ChangePlanDto) {
@@ -201,9 +209,7 @@ export class SubscriptionsService {
     const subscription = await this.findOne(subscriptionId);
 
     if (!subscription.current_period_end) {
-      throw new BadRequestException(
-        'Assinatura sem período atual definido',
-      );
+      throw new BadRequestException('Assinatura sem período atual definido');
     }
 
     const nextPeriodStart = subscription.current_period_end;
@@ -253,7 +259,7 @@ export class SubscriptionsService {
   }
 
   async getHistory(subscriptionId: bigint) {
-    return this.prisma.subscription_history.findMany({
+    const history = await this.prisma.subscription_history.findMany({
       where: {
         subscription_id: subscriptionId,
       },
@@ -265,5 +271,7 @@ export class SubscriptionsService {
         changed_at: 'desc',
       },
     });
+
+    return serializeBigInt(history);
   }
 }

@@ -8,6 +8,7 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 
 import { CreatePlanDto } from './dto/create-plan.dto.js';
 import { UpdatePlanDto } from './dto/update-plan.dto.js';
+import { serializeBigInt } from '../../common/utils/bigint.util.js';
 
 @Injectable()
 export class PlansService {
@@ -38,11 +39,13 @@ export class PlansService {
   }
 
   async findAll() {
-    return this.prisma.plans.findMany({
+    const plans = await this.prisma.plans.findMany({
       orderBy: {
         name: 'asc',
       },
     });
+
+    return serializeBigInt(plans);
   }
 
   async findOne(id: bigint) {

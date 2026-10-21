@@ -10,13 +10,13 @@ import { AuthController } from './auth.controller.js';
 import { JwtStrategy } from './strategies/jwt.strategy.js';
 
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { TenantModule } from '../../common/tenant/tenant.module.js';
 
 @Module({
   imports: [
     ConfigModule,
-
     PassportModule,
-
+    TenantModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
 

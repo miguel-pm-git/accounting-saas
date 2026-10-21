@@ -2,9 +2,16 @@ import 'dotenv/config';
 
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 
+import { randomUUID } from 'crypto';
+
 import {
   PrismaClient,
   billing_period,
+  subscription_status,
+  invoice_status,
+  payment_status,
+  payment_gateway,
+  cancellation_reason,
 } from '../src/generated/prisma/client.js';
 
 const adapter = new PrismaMariaDb(process.env.DATABASE_URL!);
@@ -258,6 +265,204 @@ async function main() {
   await upsertLimit(enterprise.id, 'COMPANIES', 999999);
   await upsertLimit(enterprise.id, 'CHART_ACCOUNTS', 999999);
   await upsertLimit(enterprise.id, 'JOURNAL_ENTRIES', 999999);
+
+  console.log('Seed completed successfully.');
+
+  console.log('Seeding SaaS test data...');
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('Seeding SaaS test data...');
+
+    console.log('Cleaning previous test data...');
+
+    await prisma.subscription_cancellations.deleteMany();
+
+    await prisma.subscription_history.deleteMany();
+
+    await prisma.payments.deleteMany();
+
+    await prisma.invoices.deleteMany();
+
+    await prisma.subscriptions.deleteMany({
+      where: {
+        companies: {
+          tax_id: {
+            in: ['11111111000111', '22222222000122', '33333333000133'],
+          },
+        },
+      },
+    });
+
+    const companyTrial = await prisma.companies.upsert({
+      where: {
+        tax_id: '11111111000111',
+      },
+      update: {
+        legal_name: 'Empresa Trial LTDA',
+        trade_name: 'Empresa Trial',
+        email: 'trial@test.com',
+        phone: '11999999991',
+        asaas_customer_id: 'cus_trial',
+        active: true,
+      },
+      create: {
+        uuid: randomUUID(),
+        legal_name: 'Empresa Trial LTDA',
+        trade_name: 'Empresa Trial',
+        tax_id: '11111111000111',
+        email: 'trial@test.com',
+        phone: '11999999991',
+        asaas_customer_id: 'cus_trial',
+        active: true,
+      },
+    });
+
+    const companyActive = await prisma.companies.upsert({
+      where: {
+        tax_id: '22222222000122',
+      },
+      update: {
+        legal_name: 'Empresa Ativa LTDA',
+        trade_name: 'Empresa Ativa',
+        email: 'active@test.com',
+        phone: '11999999992',
+        asaas_customer_id: 'cus_active',
+        active: true,
+      },
+      create: {
+        uuid: randomUUID(),
+        legal_name: 'Empresa Ativa LTDA',
+        trade_name: 'Empresa Ativa',
+        tax_id: '22222222000122',
+        email: 'active@test.com',
+        phone: '11999999992',
+        asaas_customer_id: 'cus_active',
+        active: true,
+      },
+    });
+
+    const companyCancelled = await prisma.companies.upsert({
+      where: {
+        tax_id: '33333333000133',
+      },
+      update: {
+        legal_name: 'Empresa Cancelada LTDA',
+        trade_name: 'Empresa Cancelada',
+        email: 'cancel@test.com',
+        phone: '11999999993',
+        asaas_customer_id: 'cus_cancelled',
+        active: true,
+      },
+      create: {
+        uuid: randomUUID(),
+        legal_name: 'Empresa Cancelada LTDA',
+        trade_name: 'Empresa Cancelada',
+        tax_id: '33333333000133',
+        email: 'cancel@test.com',
+        phone: '11999999993',
+        asaas_customer_id: 'cus_cancelled',
+        active: true,
+      },
+    });
+
+    const subscriptionTrial = await prisma.subscriptions.create({
+      data: {
+        company_id: companyTrial.id,
+        plan_id: starter.id,
+        status: subscription_status.TRIALING,
+        started_at: new Date(),
+        trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+      },
+    });
+
+    const subscriptionActive = await prisma.subscriptions.create({
+      data: {
+        company_id: companyActive.id,
+        plan_id: professional.id,
+        status: subscription_status.ACTIVE,
+        started_at: new Date(),
+        current_period_start: new Date(),
+        current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      },
+    });
+
+    const subscriptionCancelled = await prisma.subscriptions.create({
+      data: {
+        company_id: companyCancelled.id,
+        plan_id: starter.id,
+        status: subscription_status.CANCELED,
+        started_at: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
+        cancelled_at: new Date(),
+      },
+    });
+
+    await prisma.subscription_cancellations.create({
+      data: {
+        subscription_id: subscriptionCancelled.id,
+        reason: cancellation_reason.TOO_EXPENSIVE,
+        notes: 'Seed para testes de churn',
+      },
+    });
+
+    await prisma.subscription_history.create({
+      data: {
+        subscription_id: subscriptionActive.id,
+        old_plan_id: starter.id,
+        new_plan_id: professional.id,
+        notes: 'Upgrade de teste',
+      },
+    });
+
+    const invoicePending = await prisma.invoices.create({
+      data: {
+        company_id: companyActive.id,
+        subscription_id: subscriptionActive.id,
+        invoice_number: 'INV-TEST-001',
+        issue_date: new Date(),
+        due_date: new Date(),
+        amount: professional.price,
+        status: invoice_status.PENDING,
+      },
+    });
+
+    const invoicePaid = await prisma.invoices.create({
+      data: {
+        company_id: companyActive.id,
+        subscription_id: subscriptionActive.id,
+        invoice_number: 'INV-TEST-002',
+        issue_date: new Date(),
+        due_date: new Date(),
+        amount: professional.price,
+        status: invoice_status.PAID,
+        paid_at: new Date(),
+      },
+    });
+
+    await prisma.payments.create({
+      data: {
+        company_id: companyActive.id,
+        invoice_id: invoicePending.id,
+        gateway: payment_gateway.ASAAS,
+        amount: professional.price,
+        status: payment_status.PENDING,
+        transaction_id: 'trx_pending',
+      },
+    });
+
+    await prisma.payments.create({
+      data: {
+        company_id: companyActive.id,
+        invoice_id: invoicePaid.id,
+        gateway: payment_gateway.ASAAS,
+        amount: professional.price,
+        status: payment_status.PAID,
+        transaction_id: 'trx_paid',
+        paid_at: new Date(),
+      },
+    });
+
+    console.log('SaaS test data seeded successfully.');
+  }
 
   console.log('Seed completed successfully.');
 }

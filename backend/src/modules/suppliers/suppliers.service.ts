@@ -9,17 +9,11 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 import { CreateSupplierDto } from './dto/create-supplier.dto.js';
 import { UpdateSupplierDto } from './dto/update-supplier.dto.js';
 
+import { serializeBigInt } from '../../common/utils/bigint.util.js';
+
 @Injectable()
 export class SuppliersService {
   constructor(private readonly prisma: PrismaService) {}
-
-  private serializeBigInt(data: any) {
-    return JSON.parse(
-      JSON.stringify(data, (_, value) =>
-        typeof value === 'bigint' ? value.toString() : value,
-      ),
-    );
-  }
 
   async create(companyId: bigint, dto: CreateSupplierDto) {
     if (dto.document_number) {
@@ -47,7 +41,7 @@ export class SuppliersService {
       },
     });
 
-    return this.serializeBigInt(supplier);
+    return serializeBigInt(supplier);
   }
 
   async findAll(companyId: bigint) {
@@ -60,7 +54,7 @@ export class SuppliersService {
       },
     });
 
-    return this.serializeBigInt(suppliers);
+    return serializeBigInt(suppliers);
   }
 
   async findOne(id: bigint, companyId: bigint) {
@@ -75,7 +69,7 @@ export class SuppliersService {
       throw new NotFoundException('Fornecedor não encontrado');
     }
 
-    return this.serializeBigInt(supplier);
+    return serializeBigInt(supplier);
   }
 
   async update(id: bigint, companyId: bigint, dto: UpdateSupplierDto) {
@@ -111,7 +105,7 @@ export class SuppliersService {
       data: dto,
     });
 
-    return this.serializeBigInt(updated);
+    return serializeBigInt(updated);
   }
 
   async remove(id: bigint, companyId: bigint) {

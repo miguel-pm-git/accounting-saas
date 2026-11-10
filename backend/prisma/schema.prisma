@@ -36,6 +36,7 @@ model audit_logs {
 model bank_accounts {
   id              BigInt           @id @default(autoincrement()) @db.UnsignedBigInt
   company_id      BigInt           @db.UnsignedBigInt
+  bank_code       String?          @db.VarChar(10)
   bank_name       String           @db.VarChar(100)
   agency          String?          @db.VarChar(20)
   account_number  String?          @db.VarChar(30)
@@ -44,8 +45,10 @@ model bank_accounts {
   created_at      DateTime?        @default(now()) @db.DateTime(0)
   companies       companies        @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_bank_account_company")
   cash_movements  cash_movements[]
+  receipts        receivable_receipts[]
 
   @@index([company_id], map: "idx_bank_company")
+  @@unique([company_id, bank_code, agency, account_number], map: "uk_bank_account_company")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -260,6 +263,7 @@ model journal_entries {
   journal_reversals_journal_reversals_reversal_entry_idTojournal_entries      journal_reversals?             @relation("journal_reversals_reversal_entry_idTojournal_entries")
   journal_reversals_journal_reversals_original_entry_idTojournal_entries      journal_reversals?             @relation("journal_reversals_original_entry_idTojournal_entries")
   payable_payments                                                            payable_payments[]
+  receivable_receipts                                                         receivable_receipts[]
 
   @@unique([company_id, entry_number], map: "uk_company_entry_number")
   @@index([reversed_by_entry_id], map: "fk_journal_reversal_generated")
@@ -354,6 +358,27 @@ model payables {
   @@index([supplier_id], map: "idx_payable_supplier")
 }
 
+model receivable_receipts {
+  id                BigInt             @id @default(autoincrement()) @db.UnsignedBigInt
+  receivable_id     BigInt             @db.UnsignedBigInt
+  bank_account_id   BigInt?            @db.UnsignedBigInt
+  receipt_date      DateTime           @db.Date
+  amount            Decimal            @db.Decimal(18, 2)
+  payment_method    payment_method?
+  document_number   String?            @db.VarChar(100)
+  notes             String?            @db.VarChar(1000)
+  journal_entry_id  BigInt?            @db.UnsignedBigInt
+  created_at        DateTime           @default(now()) @db.DateTime(0)
+  receivables       receivables        @relation(fields: [receivable_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_receipt_receivable")
+  bank_accounts     bank_accounts?     @relation(fields: [bank_account_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_receipt_bank")
+  journal_entries   journal_entries?   @relation(fields: [journal_entry_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_receipt_journal")
+
+  @@index([receivable_id], map: "idx_receipt_receivable")
+  @@index([bank_account_id], map: "idx_receipt_bank")
+  @@index([receipt_date], map: "idx_receipt_date")
+  @@index([journal_entry_id], map: "idx_receipt_journal")
+}
+
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model receivables {
   id              BigInt             @id @default(autoincrement()) @db.UnsignedBigInt
@@ -369,6 +394,7 @@ model receivables {
   updated_at      DateTime           @default(now()) @db.DateTime(0)
   companies       companies          @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_receivable_company")
   customers       customers?         @relation(fields: [customer_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_receivable_customer")
+  receipts        receivable_receipts[]
 
   @@index([company_id], map: "idx_receivable_company")
   @@index([company_id, status], map: "idx_receivable_company_status")
@@ -414,7 +440,7 @@ model payable_payments {
   payable_id       BigInt                  @db.UnsignedBigInt
   payment_date     DateTime                @db.Date
   amount           Decimal                 @db.Decimal(18, 2)
-  payment_method   payable_payment_method?
+  payment_method   payment_method?
   document_number  String?                 @db.VarChar(100)
   notes            String?                 @db.VarChar(1000)
   journal_entry_id BigInt?                 @db.UnsignedBigInt
@@ -585,7 +611,7 @@ model subscription_cancellations {
   @@index([reason], map: "idx_subscription_cancel_reason")
 }
 
-enum payable_payment_method {
+enum payment_method {
   CASH
   PIX
   TED
